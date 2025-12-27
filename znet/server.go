@@ -1,6 +1,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"zinx-learn/ziface"
@@ -22,6 +23,15 @@ func NewServer(name string) ziface.IServer {
 	}
 }
 
+func CallBack(conn *net.TCPConn, data []byte, cnt int) error {
+	//回显业务
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Printf("Write back err: %v\n", err)
+		return errors.New("CallBack Write err")
+	}
+	return nil
+}
+
 func (s *server) Start() {
 	go func() {
 		// 1 初始化一个socket
@@ -37,29 +47,19 @@ func (s *server) Start() {
 			return
 		}
 		fmt.Printf("Server %s started, listening on %s\n", s.Name, listener.Addr().String())
-		// 循环等待客户端的连接
+		// 3 循环等待客户端的连接
+		var cid uint32 = 0
 		for {
 			conn, err := listener.AcceptTCP()
 			if err != nil {
 				fmt.Printf("AcceptTCP err: %v\n", err)
 				continue
 			}
-			// 处理回显
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Printf("Read err: %v\n", err)
-						continue
-					}
-					fmt.Printf("Client %s send: %s, cnt:%d\n", conn.RemoteAddr().String(), buf[:cnt], cnt)
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Printf("Write err: %v\n", err)
-						continue
-					}
-				}
-			}()
+			// 4 创建连接对象
+			c := NewConnection(conn, cid, CallBack)
+			cid++
+			// 5 启动连接
+			go c.Start()
 		}
 	}()
 }
