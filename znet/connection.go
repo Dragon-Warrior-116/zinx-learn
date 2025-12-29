@@ -16,17 +16,17 @@ type Connection struct {
 
 	ExitChan chan bool // 用于通知连接退出的通道
 
-	HandleApi ziface.HandleFunc // 处理连接数据的回调函数
+	Router ziface.IRouter // 路由
 }
 
 // NewConnection 创建一个新的连接对象
-func NewConnection(conn *net.TCPConn, connID uint32, callBack ziface.HandleFunc) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, router ziface.IRouter) *Connection {
 	c := &Connection{
-		Conn:      conn,
-		ConnID:    connID,
-		IsClose:   false,
-		ExitChan:  make(chan bool, 1),
-		HandleApi: callBack,
+		Conn:     conn,
+		ConnID:   connID,
+		IsClose:  false,
+		ExitChan: make(chan bool, 1),
+		Router:   router,
 	}
 	return c
 }
@@ -45,15 +45,20 @@ func (c *Connection) StartReader() {
 	for {
 		//读客户端的数据到buf
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		if err != nil {
 			fmt.Printf("Read err: %v\n", err)
 			continue
 		}
-		if err := c.HandleApi(c.Conn, buf[:cnt], cnt); err != nil {
-			fmt.Printf("HandleApi err: %v\n", err)
-			break
+		req := &Request{
+			conn: c,
+			data: buf,
 		}
+		go func(req *Request) {
+			c.Router.PreHandle(req)
+			c.Router.Handle(req)
+			c.Router.PostHandle(req)
+		}(req)
 	}
 }
 
