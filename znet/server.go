@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"net"
+	"zinx-learn/utils"
 	"zinx-learn/ziface"
 )
 
@@ -16,10 +17,10 @@ type server struct {
 
 func NewServer(name string) ziface.IServer {
 	return &server{
-		Name:      name,
+		Name:      utils.GlobalObject.Name,
 		IPVersion: "tcp4",
-		IP:        "0.0.0.0",
-		Port:      8999,
+		IP:        utils.GlobalObject.Host,
+		Port:      utils.GlobalObject.TcpPort,
 		Router:    nil,
 	}
 }
@@ -27,7 +28,7 @@ func NewServer(name string) ziface.IServer {
 func (s *server) Start() {
 	go func() {
 		// 1 初始化一个socket
-		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", s.IP, s.Port))
+		addr, err := net.ResolveTCPAddr(s.IPVersion, fmt.Sprintf("%s:%d", utils.GlobalObject.Host, utils.GlobalObject.TcpPort))
 		if err != nil {
 			fmt.Printf("ResolveTCPAddr err: %v\n", err)
 			return
